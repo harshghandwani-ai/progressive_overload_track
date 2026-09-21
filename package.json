@@ -8,15 +8,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "preview": "vite preview",
-    "mobile:build": "vite build && cap sync android",
-    "mobile:sync": "cap sync",
-    "mobile:open": "cap open android"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@capacitor/android": "^8.5.2",
-    "@capacitor/cli": "^8.5.2",
-    "@capacitor/core": "^8.5.2",
     "canvas-confetti": "^1.9.4",
     "chart.js": "^4.5.1",
     "lucide-react": "^1.47.0",

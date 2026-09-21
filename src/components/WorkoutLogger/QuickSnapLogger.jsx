@@ -1,20 +1,66 @@
-import React, { useState } from 'react';
-import { Camera, Sparkles, Send, Loader2, Image as ImageIcon, X, Check, Flame } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Camera, Sparkles, Loader2, X, Check, Flame, Mic, MicOff, Calculator } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { convertFileToBase64 } from '../../utils/storage';
 import { analyzeWorkoutInputWithAI } from '../../utils/aiLoggerService';
 
-export default function QuickSnapLogger({ onLogExercise, onStartRestTimer, prefilledText }) {
+export default function QuickSnapLogger({ 
+  onLogExercise, 
+  onStartRestTimer, 
+  prefilledText,
+  onOpenPlateCalculator 
+}) {
   const [photo, setPhoto] = useState(null);
   const [textNote, setTextNote] = useState(prefilledText || '');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const [lastLoggedMessage, setLastLoggedMessage] = useState('');
 
-  // Update text input when prefilled text changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (prefilledText) {
       setTextNote(prefilledText);
     }
   }, [prefilledText]);
+
+  // Web Speech API Voice Recognition
+  const toggleVoiceRecording = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Speech recognition is not supported in this browser. Try Chrome or Edge!');
+      return;
+    }
+
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setTextNote(prev => (prev ? `${prev} ${transcript}` : transcript));
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
@@ -28,10 +74,22 @@ export default function QuickSnapLogger({ onLogExercise, onStartRestTimer, prefi
     }
   };
 
+  const triggerConfetti = () => {
+    try {
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+    } catch (e) {
+      // fallback if canvas-confetti unavailable
+    }
+  };
+
   const handleAnalyzeAndLog = async (e) => {
     e.preventDefault();
     if (!photo && !textNote.trim()) {
-      alert('Please upload a photo or type exercise details in the text box.');
+      alert('Please upload a photo, record speech, or type exercise details.');
       return;
     }
 
@@ -49,7 +107,9 @@ export default function QuickSnapLogger({ onLogExercise, onStartRestTimer, prefi
         image: photo
       });
 
-      setLastLoggedMessage(`Logged ${result.exerciseName} (${result.sets.length} sets)!`);
+      triggerConfetti();
+
+      setLastLoggedMessage(`🔥 Overload Logged! ${result.exerciseName} (${result.sets.length} sets)`);
       
       if (onStartRestTimer) {
         onStartRestTimer();
@@ -72,16 +132,28 @@ export default function QuickSnapLogger({ onLogExercise, onStartRestTimer, prefi
             <Sparkles size={18} color="#fff" />
           </div>
           <div>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff' }}>Quick AI Photo Logger</h3>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff' }}>Quick AI Photo & Voice Logger</h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-              Snap equipment/exercise photo + type reps (e.g. "80kg 8 reps"). AI handles the rest!
+              Snap photo or tap mic to speak your set (e.g. "Bench press 80kg 8 reps").
             </p>
           </div>
         </div>
 
-        <span className="badge badge-emerald">
-          <Flame size={12} /> Fast Log
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {onOpenPlateCalculator && (
+            <button 
+              type="button" 
+              className="btn btn-secondary btn-sm" 
+              onClick={onOpenPlateCalculator}
+              title="Barbell Plate Calculator"
+            >
+              <Calculator size={15} /> Plate Calc
+            </button>
+          )}
+          <span className="badge badge-emerald">
+            <Flame size={12} /> Fast Log
+          </span>
+        </div>
       </div>
 
       <form onSubmit={handleAnalyzeAndLog}>
@@ -136,16 +208,42 @@ export default function QuickSnapLogger({ onLogExercise, onStartRestTimer, prefi
             </label>
           )}
 
-          {/* Single Text Box */}
-          <div style={{ flex: 1, minWidth: '240px' }}>
+          {/* Text Area + Voice Mic Button Overlay */}
+          <div style={{ flex: 1, minWidth: '240px', position: 'relative' }}>
             <textarea
               className="input-field"
               rows={3}
-              placeholder='e.g., "Bench press 80kg 8 reps, 80kg 8 reps, 85kg 6 reps"'
+              placeholder='Type or tap microphone to speak: "Bench press 80kg 8 reps"'
               value={textNote}
               onChange={(e) => setTextNote(e.target.value)}
-              style={{ resize: 'none', width: '100%', height: '90px', fontSize: '0.95rem' }}
+              style={{ resize: 'none', width: '100%', height: '90px', fontSize: '0.95rem', paddingRight: '45px' }}
             />
+
+            {/* Mic Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleVoiceRecording}
+              style={{
+                position: 'absolute',
+                right: '10px',
+                bottom: '12px',
+                width: '34px',
+                height: '34px',
+                borderRadius: '50%',
+                background: isListening ? 'var(--accent-rose)' : 'rgba(99, 102, 241, 0.2)',
+                border: `1px solid ${isListening ? 'var(--accent-rose)' : 'var(--accent-primary)'}`,
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justify: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: isListening ? '0 0 12px var(--accent-rose)' : 'none'
+              }}
+              title={isListening ? 'Stop Listening' : 'Speak Workout Input'}
+            >
+              {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+            </button>
           </div>
         </div>
 
@@ -156,7 +254,7 @@ export default function QuickSnapLogger({ onLogExercise, onStartRestTimer, prefi
             </div>
           ) : (
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Tip: Select an exercise from the Target HUD below to auto-fill today's target!
+              {isListening ? '🎙️ Listening... Speak your exercise, weight, and reps now!' : 'Tap mic icon to dictate workout hands-free.'}
             </div>
           )}
 

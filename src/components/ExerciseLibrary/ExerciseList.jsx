@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus, Dumbbell, Trophy, X, Camera, Image as ImageIcon } from 'lucide-react';
 import { MUSCLE_GROUPS, EQUIPMENT_TYPES } from '../../data/defaultExercises';
-import { calculate1RM, formatDate } from '../../utils/formulas';
+import { getMaxWeight, formatDate } from '../../utils/formulas';
 import { convertFileToBase64 } from '../../utils/storage';
 
 export default function ExerciseList({ 
@@ -15,7 +15,6 @@ export default function ExerciseList({
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedExerciseDetail, setSelectedExerciseDetail] = useState(null);
 
-  // Form state
   const [name, setName] = useState('');
   const [muscleGroup, setMuscleGroup] = useState(MUSCLE_GROUPS[0]);
   const [equipment, setEquipment] = useState(EQUIPMENT_TYPES[0]);
@@ -62,21 +61,17 @@ export default function ExerciseList({
     setImage(null);
   };
 
-  const getExercisePR = (exerciseId) => {
-    let pr = 0;
+  const getExerciseMaxWeight = (exerciseId) => {
+    let maxW = 0;
     workoutHistory.forEach(w => {
       w.exercises.forEach(ex => {
         if (ex.exerciseId === exerciseId) {
-          ex.sets.forEach(s => {
-            if (s.completed && s.weight && s.reps) {
-              const val = calculate1RM(s.weight, s.reps);
-              if (val > pr) pr = val;
-            }
-          });
+          const wMax = getMaxWeight(ex.sets);
+          if (wMax > maxW) maxW = wMax;
         }
       });
     });
-    return pr;
+    return maxW;
   };
 
   return (
@@ -85,7 +80,7 @@ export default function ExerciseList({
         <div>
           <h2 style={{ fontSize: '1.6rem', fontWeight: 800 }}>Exercise Library</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Build your movement collection with custom descriptions and exercise photos.
+            Browse your logged movement collection and standard set records.
           </p>
         </div>
 
@@ -94,7 +89,6 @@ export default function ExerciseList({
         </button>
       </div>
 
-      {/* Filter Bar */}
       {exercises.length > 0 && (
         <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.75rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', alignItems: 'center' }}>
@@ -127,13 +121,12 @@ export default function ExerciseList({
         </div>
       )}
 
-      {/* Exercises Grid or Empty State */}
       {exercises.length === 0 ? (
         <div className="glass-panel" style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
           <ImageIcon size={48} color="var(--text-muted)" style={{ marginBottom: '1rem' }} />
           <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '0.5rem' }}>No Exercises Created Yet</h3>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem', maxWidth: '450px', margin: '0 auto 1.5rem auto' }}>
-            Start completely clean! Add your movements, equipment types, and photo references as you train.
+            Add your movements, equipment types, and photo references as you train.
           </p>
           <button className="btn btn-emerald" onClick={() => setShowAddModal(true)}>
             <Plus size={18} /> Create Your First Exercise
@@ -142,7 +135,7 @@ export default function ExerciseList({
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
           {filtered.map((ex) => {
-            const pr = getExercisePR(ex.id);
+            const maxW = getExerciseMaxWeight(ex.id);
             return (
               <div 
                 key={ex.id} 
@@ -180,9 +173,9 @@ export default function ExerciseList({
                 </div>
 
                 <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '1rem', paddingTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Est. 1RM Peak</span>
-                  <span style={{ fontWeight: 700, color: pr > 0 ? 'var(--accent-amber)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <Trophy size={14} /> {pr > 0 ? `${pr} kg` : 'No logs yet'}
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Max Weight Lifted</span>
+                  <span style={{ fontWeight: 700, color: maxW > 0 ? 'var(--accent-amber)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Trophy size={14} /> {maxW > 0 ? `${maxW} kg` : 'No logs yet'}
                   </span>
                 </div>
               </div>
@@ -237,7 +230,6 @@ export default function ExerciseList({
                 </div>
               </div>
 
-              {/* Photo upload field */}
               <div style={{ marginBottom: '1.25rem' }}>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>
                   Exercise Photo (Optional)
@@ -301,9 +293,9 @@ export default function ExerciseList({
 
             <div className="overload-box" style={{ marginBottom: '1.25rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Estimated 1RM Personal Record</span>
+                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Heaviest Weight Recorded</span>
                 <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent-amber)' }}>
-                  {getExercisePR(selectedExerciseDetail.id)} kg
+                  {getExerciseMaxWeight(selectedExerciseDetail.id)} kg
                 </span>
               </div>
             </div>

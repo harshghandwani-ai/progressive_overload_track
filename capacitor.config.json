@@ -1,0 +1,14 @@
+{
+  "appId": "com.overloadtrack.app",
+  "appName": "Overload Track",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#090d16"
+    }
+  }
+}

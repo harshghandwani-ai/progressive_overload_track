@@ -3,9 +3,10 @@ import {
   Trophy, Dumbbell, Activity, Calendar, Play, ChevronRight, 
   TrendingUp, Sparkles, Camera, Plus
 } from 'lucide-react';
-import { calculateVolume, calculate1RM, formatDate } from '../../utils/formulas';
+import { calculateVolume, getMaxWeight, formatDate } from '../../utils/formulas';
 import QuickSnapLogger from '../WorkoutLogger/QuickSnapLogger';
 import ExerciseTargetHUD from '../WorkoutLogger/ExerciseTargetHUD';
+import PlateCalculatorModal from '../Tools/PlateCalculatorModal';
 import RestTimer from '../WorkoutLogger/RestTimer';
 import { Line } from 'react-chartjs-2';
 import {
@@ -41,26 +42,23 @@ export default function Dashboard({
   onQuickLogExercise 
 }) {
   const [showRestTimer, setShowRestTimer] = useState(false);
+  const [showPlateCalc, setShowPlateCalc] = useState(false);
   const [prefilledText, setPrefilledText] = useState('');
 
   const totalWorkouts = workoutHistory.length;
 
   let grandTotalVolume = 0;
-  let topEst1RM = { exercise: 'None', val: 0 };
+  let heaviestRecord = { exercise: 'None', weight: 0 };
 
   workoutHistory.forEach(w => {
     w.exercises.forEach(ex => {
       const vol = calculateVolume(ex.sets);
       grandTotalVolume += vol;
 
-      ex.sets.forEach(s => {
-        if (s.completed && s.weight && s.reps) {
-          const oneRM = calculate1RM(s.weight, s.reps);
-          if (oneRM > topEst1RM.val) {
-            topEst1RM = { exercise: ex.exerciseName, val: oneRM };
-          }
-        }
-      });
+      const maxW = getMaxWeight(ex.sets);
+      if (maxW > heaviestRecord.weight) {
+        heaviestRecord = { exercise: ex.exerciseName, weight: maxW };
+      }
     });
   });
 
@@ -118,6 +116,7 @@ export default function Dashboard({
         onLogExercise={onQuickLogExercise}
         onStartRestTimer={() => setShowRestTimer(true)}
         prefilledText={prefilledText}
+        onOpenPlateCalculator={() => setShowPlateCalc(true)}
       />
 
       {/* Target & Past Performance HUD */}
@@ -135,18 +134,21 @@ export default function Dashboard({
 
         <div style={{ maxWidth: '680px', position: 'relative', zIndex: 2 }}>
           <span className="badge badge-emerald" style={{ marginBottom: '0.6rem' }}>
-            <Sparkles size={13} /> Progressive Overload Tracker • Image & AI Vision
+            <Sparkles size={13} /> Progressive Overload Tracker • Standard Sets
           </span>
           <h1 style={{ fontSize: '1.85rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-            Instant Photo Logging & <span style={{ color: 'var(--accent-emerald)' }}>Live Target HUD.</span>
+            Track Weight & Reps. <span style={{ color: 'var(--accent-emerald)' }}>Log With Ease.</span>
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '1.25rem' }}>
-            Tap any exercise chip above to immediately view past session reps, 1RM sparkline curves, and your 25% overload target for today!
+            Tap the mic button to speak your sets or snap a photo of your gym equipment. Overload recommendations dynamically calculate target weight & reps based on your history!
           </p>
 
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
             <button className="btn btn-emerald" onClick={onStartWorkout}>
               <Play size={18} /> Full Workout Session
+            </button>
+            <button className="btn btn-secondary" onClick={() => setShowPlateCalc(true)}>
+              Barbell Plate Calc
             </button>
           </div>
         </div>
@@ -179,8 +181,8 @@ export default function Dashboard({
             <Trophy size={24} />
           </div>
           <div>
-            <div className="stat-value">{topEst1RM.val > 0 ? `${topEst1RM.val} kg` : '-'}</div>
-            <div className="stat-label">Peak Est 1RM ({topEst1RM.val > 0 ? topEst1RM.exercise : 'Log to reveal'})</div>
+            <div className="stat-value">{heaviestRecord.weight > 0 ? `${heaviestRecord.weight} kg` : '-'}</div>
+            <div className="stat-label">Heaviest Lift ({heaviestRecord.weight > 0 ? heaviestRecord.exercise : 'Log to reveal'})</div>
           </div>
         </div>
       </div>
@@ -211,7 +213,7 @@ export default function Dashboard({
           <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-secondary)' }}>
             <Camera size={36} color="var(--text-muted)" style={{ marginBottom: '0.75rem' }} />
             <p style={{ fontWeight: 600, fontSize: '1rem', color: '#fff', marginBottom: '0.25rem' }}>Your workout feed is empty</p>
-            <p style={{ fontSize: '0.85rem' }}>Use the quick photo box above to log your first exercise set!</p>
+            <p style={{ fontSize: '0.85rem' }}>Use photo or mic button above to log your first exercise set!</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -255,6 +257,14 @@ export default function Dashboard({
       {/* Floating Rest Timer */}
       {showRestTimer && (
         <RestTimer initialSeconds={90} onClose={() => setShowRestTimer(false)} />
+      )}
+
+      {/* Barbell Plate Calculator Modal */}
+      {showPlateCalc && (
+        <PlateCalculatorModal
+          initialWeight={80}
+          onClose={() => setShowPlateCalc(false)}
+        />
       )}
     </div>
   );

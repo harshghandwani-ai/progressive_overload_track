@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, CheckCircle2, Circle, Flame, Sparkles, Image as ImageIcon, X, Camera } from 'lucide-react';
-import { calculate1RM, calculateVolume, getOverloadRecommendation } from '../../utils/formulas';
+import { calculateVolume, getOverloadRecommendation } from '../../utils/formulas';
 import { convertFileToBase64 } from '../../utils/storage';
 import { MUSCLE_GROUPS, EQUIPMENT_TYPES } from '../../data/defaultExercises';
 import RestTimer from './RestTimer';
@@ -17,19 +17,16 @@ export default function ActiveWorkout({
   const [workoutImage, setWorkoutImage] = useState(workout?.image || null);
   const [exercises, setExercises] = useState(workout?.exercises || []);
   
-  // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [timerDuration] = useState(90);
 
-  // Quick Create Exercise Form State
   const [newExName, setNewExName] = useState('');
   const [newExMuscle, setNewExMuscle] = useState(MUSCLE_GROUPS[0]);
   const [newExEquipment, setNewExEquipment] = useState(EQUIPMENT_TYPES[0]);
   const [newExImage, setNewExImage] = useState(null);
 
-  // Handle image upload for workout session
   const handleWorkoutImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -42,7 +39,6 @@ export default function ActiveWorkout({
     }
   };
 
-  // Handle image upload for new exercise
   const handleExerciseImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -55,9 +51,7 @@ export default function ActiveWorkout({
     }
   };
 
-  // Add existing exercise to workout
   const handleSelectExistingExercise = (exercise) => {
-    // Check past history for weight defaults
     const pastWorkout = workoutHistory.find(w => 
       w.exercises.some(e => e.exerciseId === exercise.id)
     );
@@ -81,7 +75,6 @@ export default function ActiveWorkout({
     setShowAddModal(false);
   };
 
-  // Create & add new exercise on the fly
   const handleCreateAndAddExercise = (e) => {
     e.preventDefault();
     if (!newExName.trim()) return;
@@ -97,7 +90,6 @@ export default function ActiveWorkout({
 
     onAddExercise(createdExercise);
 
-    // Add directly to active workout
     const newEntry = {
       exerciseId: createdExercise.id,
       exerciseName: createdExercise.name,
@@ -183,7 +175,7 @@ export default function ActiveWorkout({
 
   return (
     <div style={{ maxWidth: '850px', margin: '0 auto', animation: 'fadeIn 0.2s ease' }}>
-      {/* Top Header & Photo Upload */}
+      {/* Top Header */}
       <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
           <div style={{ flex: 1 }}>
@@ -216,7 +208,7 @@ export default function ActiveWorkout({
           </div>
         </div>
 
-        {/* Optional Workout Session Photo */}
+        {/* Workout Photo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.85rem' }}>
           {workoutImage ? (
             <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
@@ -236,7 +228,7 @@ export default function ActiveWorkout({
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justify: 'center'
                 }}
               >
                 <X size={12} />
@@ -257,7 +249,7 @@ export default function ActiveWorkout({
           <ImageIcon size={42} color="var(--text-muted)" style={{ marginBottom: '0.75rem' }} />
           <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem' }}>No Exercises Added Yet</h3>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
-            Add your first exercise or capture an exercise image to start logging sets.
+            Add your exercise to start logging sets.
           </p>
 
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -334,15 +326,15 @@ export default function ActiveWorkout({
                 </div>
               )}
 
-              {/* Sets Table */}
+              {/* Standard Sets Table (Weight & Reps Only) */}
               <div style={{ overflowX: 'auto' }}>
                 <table className="sets-table">
                   <thead>
                     <tr>
-                      <th style={{ width: '12%' }}>Set</th>
-                      <th style={{ width: '30%' }}>Weight (kg)</th>
-                      <th style={{ width: '30%' }}>Reps</th>
-                      <th style={{ width: '18%', textAlign: 'center' }}>Done</th>
+                      <th style={{ width: '15%' }}>Set</th>
+                      <th style={{ width: '35%' }}>Weight (kg)</th>
+                      <th style={{ width: '35%' }}>Reps</th>
+                      <th style={{ width: '15%', textAlign: 'center' }}>Done</th>
                       <th style={{ width: '10%' }}></th>
                     </tr>
                   </thead>
@@ -357,7 +349,7 @@ export default function ActiveWorkout({
                             type="number"
                             step="0.5"
                             className="input-field"
-                            placeholder="0"
+                            placeholder="Weight (kg)"
                             value={set.weight}
                             onChange={(e) => handleUpdateSet(exIndex, setIdx, 'weight', e.target.value)}
                           />
@@ -366,7 +358,7 @@ export default function ActiveWorkout({
                           <input
                             type="number"
                             className="input-field"
-                            placeholder="0"
+                            placeholder="Reps"
                             value={set.reps}
                             onChange={(e) => handleUpdateSet(exIndex, setIdx, 'reps', e.target.value)}
                           />
@@ -514,7 +506,6 @@ export default function ActiveWorkout({
                 </div>
               </div>
 
-              {/* Attach Image */}
               <div style={{ marginBottom: '1.25rem' }}>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>
                   Exercise Photo (Optional)

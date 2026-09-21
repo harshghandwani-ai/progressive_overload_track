@@ -1,16 +1,9 @@
 /**
  * Utility functions for fitness calculations & Progressive Overload recommendation engine.
+ * Focused strictly on standard sets (Weight & Reps).
  */
 
-// Calculate Estimated 1-Rep Max using the Epley Formula: 1RM = weight * (1 + reps / 30)
-export const calculate1RM = (weight, reps) => {
-  if (!weight || !reps || reps <= 0) return 0;
-  if (reps === 1) return Math.round(weight * 10) / 10;
-  const oneRM = weight * (1 + reps / 30);
-  return Math.round(oneRM * 10) / 10;
-};
-
-// Calculate total volume for a set or array of sets
+// Calculate total volume for a set or array of sets (Weight * Reps)
 export const calculateVolume = (sets) => {
   if (!Array.isArray(sets)) return 0;
   return sets.reduce((acc, set) => {
@@ -21,10 +14,33 @@ export const calculateVolume = (sets) => {
   }, 0);
 };
 
+// Get heaviest weight lifted from an array of sets
+export const getMaxWeight = (sets) => {
+  if (!Array.isArray(sets) || sets.length === 0) return 0;
+  let maxW = 0;
+  sets.forEach(s => {
+    if (s.completed && Number(s.weight) > maxW) {
+      maxW = Number(s.weight);
+    }
+  });
+  return maxW;
+};
+
+// Get max reps hit at a given weight
+export const getMaxReps = (sets) => {
+  if (!Array.isArray(sets) || sets.length === 0) return 0;
+  let maxR = 0;
+  sets.forEach(s => {
+    if (s.completed && Number(s.reps) > maxR) {
+      maxR = Number(s.reps);
+    }
+  });
+  return maxR;
+};
+
 /**
- * Custom Progressive Overload Engine:
- * Rule: Only suggest weight increase when the user attains >= 25% MORE reps 
- * than the historical average reps for that exercise!
+ * Progressive Overload Engine (25% Rep Rule):
+ * Overload suggestion triggers when reps attained in exercise >= 25% higher than average reps.
  */
 export const getOverloadRecommendation = (exerciseHistory = [], currentWeight = 0, currentReps = 0) => {
   if (!exerciseHistory || exerciseHistory.length === 0) {
@@ -32,13 +48,12 @@ export const getOverloadRecommendation = (exerciseHistory = [], currentWeight = 
       type: 'baseline',
       recommendedWeight: currentWeight || 20,
       recommendedReps: currentReps || 8,
-      message: 'Baseline set. Complete session to establish historical average reps.',
+      message: 'Baseline set. Complete session to establish average reps.',
       progressPercentage: 0,
       attainedThreshold: false,
     };
   }
 
-  // Gather all past sets for this exercise
   let totalRepsAllSets = 0;
   let totalSetsCount = 0;
 
@@ -67,11 +82,9 @@ export const getOverloadRecommendation = (exerciseHistory = [], currentWeight = 
   const avgReps = totalRepsAllSets / totalSetsCount;
   const thresholdReps = Math.ceil(avgReps * 1.25); // 25% higher than average reps
 
-  // Check if current reps achieved exceed or equal threshold reps
   const isThresholdMet = currentReps >= thresholdReps;
 
   if (isThresholdMet) {
-    // Overload! Suggest +2.5kg increase
     const nextWeight = Math.round((Number(currentWeight) + 2.5) * 10) / 10;
     return {
       type: 'increase_weight',
@@ -80,12 +93,11 @@ export const getOverloadRecommendation = (exerciseHistory = [], currentWeight = 
       avgReps: Math.round(avgReps * 10) / 10,
       thresholdReps,
       currentReps,
-      message: `🔥 Overload Unlocked! You achieved ${currentReps} reps (Threshold: ${thresholdReps} reps, +25% over avg ${Math.round(avgReps * 10) / 10}). Time to bump weight to ${nextWeight} kg!`,
+      message: `🔥 25% Rep Overload Hit! You achieved ${currentReps} reps (Threshold: ${thresholdReps} reps). Increase weight to ${nextWeight} kg!`,
       progressPercentage: 100,
       attainedThreshold: true,
     };
   } else {
-    // Maintain weight and push reps towards the +25% goal
     const repsNeeded = thresholdReps - currentReps;
     const progressPercentage = Math.min(99, Math.round((currentReps / thresholdReps) * 100));
 
@@ -97,14 +109,13 @@ export const getOverloadRecommendation = (exerciseHistory = [], currentWeight = 
       thresholdReps,
       currentReps,
       repsNeeded,
-      message: `Keep pushing at ${currentWeight} kg! Average: ${Math.round(avgReps * 10) / 10} reps. Hit ${thresholdReps} reps (${repsNeeded > 0 ? `${repsNeeded} more reps` : 'target reached'}) to trigger +2.5kg weight increase!`,
+      message: `Keep pushing at ${currentWeight} kg! Avg: ${Math.round(avgReps * 10) / 10} reps. Hit ${thresholdReps} reps (${repsNeeded > 0 ? `${repsNeeded} more reps` : 'target reached'}) for a +2.5kg weight bump!`,
       progressPercentage,
       attainedThreshold: false,
     };
   }
 };
 
-// Format date into human readable string
 export const formatDate = (dateStr) => {
   if (!dateStr) return '';
   const date = new Date(dateStr);

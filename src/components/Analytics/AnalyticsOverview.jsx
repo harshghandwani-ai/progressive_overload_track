@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Trophy, TrendingUp, PieChart, Sparkles, Award, Dumbbell } from 'lucide-react';
-import { calculate1RM, calculateVolume, formatDate } from '../../utils/formulas';
+import { Trophy, TrendingUp, PieChart, Award } from 'lucide-react';
+import { getMaxWeight, calculateVolume, formatDate } from '../../utils/formulas';
 import { Line, Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -26,37 +26,30 @@ ChartJS.register(
 );
 
 export default function AnalyticsOverview({ exercises, workoutHistory }) {
-  const [selectedExerciseId, setSelectedExerciseId] = useState('bench-press');
+  const [selectedExerciseId, setSelectedExerciseId] = useState(exercises[0]?.id || '');
 
-  // Compute 1RM trend for selected exercise over time
   const sortedHistory = [...workoutHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
   
-  const labels1RM = [];
-  const values1RM = [];
+  const weightLabels = [];
+  const weightValues = [];
 
   sortedHistory.forEach(w => {
     const exMatch = w.exercises.find(e => e.exerciseId === selectedExerciseId);
     if (exMatch) {
-      let maxSet1RM = 0;
-      exMatch.sets.forEach(s => {
-        if (s.completed && s.weight && s.reps) {
-          const val = calculate1RM(s.weight, s.reps);
-          if (val > maxSet1RM) maxSet1RM = val;
-        }
-      });
-      if (maxSet1RM > 0) {
-        labels1RM.push(formatDate(w.date));
-        values1RM.push(maxSet1RM);
+      const maxW = getMaxWeight(exMatch.sets);
+      if (maxW > 0) {
+        weightLabels.push(formatDate(w.date));
+        weightValues.push(maxW);
       }
     }
   });
 
   const lineData = {
-    labels: labels1RM.length > 0 ? labels1RM : ['No Data'],
+    labels: weightLabels.length > 0 ? weightLabels : ['No Data'],
     datasets: [
       {
-        label: 'Est. 1RM (kg)',
-        data: values1RM.length > 0 ? values1RM : [0],
+        label: 'Max Weight Lifted (kg)',
+        data: weightValues.length > 0 ? weightValues : [0],
         borderColor: '#6366f1',
         backgroundColor: 'rgba(99, 102, 241, 0.2)',
         tension: 0.3,
@@ -66,7 +59,6 @@ export default function AnalyticsOverview({ exercises, workoutHistory }) {
     ]
   };
 
-  // Compute Volume by Muscle Group
   const muscleVolumeMap = {};
   workoutHistory.forEach(w => {
     w.exercises.forEach(ex => {
@@ -90,51 +82,48 @@ export default function AnalyticsOverview({ exercises, workoutHistory }) {
     ]
   };
 
-  // PR Leaderboard
-  const prLeaderboard = exercises.map(ex => {
-    let top1RM = 0;
+  const weightLeaderboard = exercises.map(ex => {
+    let topWeight = 0;
     workoutHistory.forEach(w => {
       w.exercises.forEach(logged => {
         if (logged.exerciseId === ex.id) {
-          logged.sets.forEach(s => {
-            if (s.completed) {
-              const val = calculate1RM(s.weight, s.reps);
-              if (val > top1RM) top1RM = val;
-            }
-          });
+          const maxW = getMaxWeight(logged.sets);
+          if (maxW > topWeight) topWeight = maxW;
         }
       });
     });
-    return { exercise: ex.name, muscle: ex.muscleGroup, pr: top1RM };
-  }).filter(item => item.pr > 0).sort((a, b) => b.pr - a.pr);
+    return { exercise: ex.name, muscle: ex.muscleGroup, maxWeight: topWeight };
+  }).filter(item => item.maxWeight > 0).sort((a, b) => b.maxWeight - a.maxWeight);
 
   return (
     <div style={{ animation: 'fadeIn 0.25s ease' }}>
       <div style={{ marginBottom: '1.75rem' }}>
-        <h2 style={{ fontSize: '1.6rem', fontWeight: 800 }}>Analytics & Strength Metrics</h2>
+        <h2 style={{ fontSize: '1.6rem', fontWeight: 800 }}>Analytics & Standard Set Metrics</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          Analyze One-Rep Max growth curves, volume distributions, and personal records.
+          Analyze weight progression curves over time, volume distribution, and top weight records.
         </p>
       </div>
 
       <div className="grid-2" style={{ marginBottom: '2rem' }}>
-        {/* 1RM Trend Line Chart */}
+        {/* Max Weight Line Chart */}
         <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '360px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <TrendingUp size={18} color="var(--accent-primary)" /> 1RM Progression Curve
+              <TrendingUp size={18} color="var(--accent-primary)" /> Max Weight Curve (kg)
             </h3>
 
-            <select
-              className="input-field"
-              style={{ width: 'auto', padding: '0.35rem 0.65rem', fontSize: '0.825rem' }}
-              value={selectedExerciseId}
-              onChange={(e) => setSelectedExerciseId(e.target.value)}
-            >
-              {exercises.map(ex => (
-                <option key={ex.id} value={ex.id}>{ex.name}</option>
-              ))}
-            </select>
+            {exercises.length > 0 && (
+              <select
+                className="input-field"
+                style={{ width: 'auto', padding: '0.35rem 0.65rem', fontSize: '0.825rem' }}
+                value={selectedExerciseId}
+                onChange={(e) => setSelectedExerciseId(e.target.value)}
+              >
+                {exercises.map(ex => (
+                  <option key={ex.id} value={ex.id}>{ex.name}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div style={{ flex: 1, position: 'relative' }}>
@@ -152,7 +141,7 @@ export default function AnalyticsOverview({ exercises, workoutHistory }) {
           </div>
         </div>
 
-        {/* Muscle Volume Breakdown */}
+        {/* Volume Distribution Doughnut */}
         <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '360px' }}>
           <div style={{ marginBottom: '1rem' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -175,24 +164,24 @@ export default function AnalyticsOverview({ exercises, workoutHistory }) {
         </div>
       </div>
 
-      {/* PR Leaderboard */}
+      {/* Weight Leaderboard */}
       <div className="glass-panel" style={{ padding: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
           <h3 style={{ fontSize: '1.2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Trophy size={20} color="var(--accent-amber)" /> Personal Record (PR) Hall of Fame
+            <Trophy size={20} color="var(--accent-amber)" /> Heaviest Lift Leaderboard
           </h3>
           <span className="badge badge-amber">
-            <Award size={13} /> Peak 1RMs
+            <Award size={13} /> Weight Records
           </span>
         </div>
 
-        {prLeaderboard.length === 0 ? (
+        {weightLeaderboard.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)' }}>
-            Complete workouts to populate your PR leaderboard.
+            Complete workouts to populate your weight leaderboard.
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
-            {prLeaderboard.map((item, idx) => (
+            {weightLeaderboard.map((item, idx) => (
               <div 
                 key={idx} 
                 className="glass-panel" 
@@ -211,9 +200,9 @@ export default function AnalyticsOverview({ exercises, workoutHistory }) {
 
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--accent-amber)' }}>
-                    {item.pr} kg
+                    {item.maxWeight} kg
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Est 1RM</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Max Weight</div>
                 </div>
               </div>
             ))}

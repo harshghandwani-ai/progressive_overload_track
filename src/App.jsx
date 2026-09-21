@@ -11,29 +11,17 @@ export default function App() {
   const [data, setData] = useState(() => loadData());
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // Sync data to localStorage
   useEffect(() => {
     saveData(data);
   }, [data]);
 
   // Start new empty workout session
   const handleStartEmptyWorkout = () => {
-    const defaultEx = data.exercises[0]; // Barbell Bench Press
     const newWorkout = {
       id: `workout-${Date.now()}`,
       name: `Workout ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
       startTime: Date.now(),
-      exercises: [
-        {
-          exerciseId: defaultEx.id,
-          exerciseName: defaultEx.name,
-          sets: [
-            { setNumber: 1, weight: 60, reps: 8, completed: false, rpe: 8 },
-            { setNumber: 2, weight: 60, reps: 8, completed: false, rpe: 8 },
-            { setNumber: 3, weight: 60, reps: 8, completed: false, rpe: 8 }
-          ]
-        }
-      ]
+      exercises: []
     };
 
     setData(prev => ({ ...prev, activeWorkout: newWorkout }));
@@ -47,10 +35,11 @@ export default function App() {
       return {
         exerciseId: id,
         exerciseName: ex ? ex.name : id,
+        image: ex?.image || null,
         sets: [
-          { setNumber: 1, weight: 40, reps: 8, completed: false, rpe: 8 },
-          { setNumber: 2, weight: 40, reps: 8, completed: false, rpe: 8 },
-          { setNumber: 3, weight: 40, reps: 8, completed: false, rpe: 8 }
+          { setNumber: 1, weight: '', reps: '', completed: false },
+          { setNumber: 2, weight: '', reps: '', completed: false },
+          { setNumber: 3, weight: '', reps: '', completed: false }
         ]
       };
     });
@@ -108,14 +97,12 @@ export default function App() {
     }));
   };
 
-  // Export JSON backup
   const handleExport = () => {
     exportDataJSON(data);
   };
 
-  // Reset to seed demo data
   const handleReset = () => {
-    if (window.confirm('Reset app data to default demo state? All local modifications will be replaced with fresh sample data.')) {
+    if (window.confirm('Reset app data to clean empty state? All local data will be reset.')) {
       const freshState = resetDataToDefault();
       setData(freshState);
       setActiveTab('dashboard');
@@ -152,15 +139,16 @@ export default function App() {
               workoutHistory={data.workoutHistory}
               onSaveWorkout={handleSaveWorkout}
               onCancelWorkout={handleCancelWorkout}
+              onAddExercise={handleAddExercise}
             />
           ) : (
             <div className="glass-panel" style={{ padding: '3rem 2rem', textAlign: 'center', maxWidth: '600px', margin: '2rem auto' }}>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>No Active Workout Session</h2>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-                Start a fresh session or launch one of your preset split routines.
+                Start a fresh session to log your exercises, weights, reps, and photos.
               </p>
               <button className="btn btn-emerald" onClick={handleStartEmptyWorkout}>
-                Start Workout Now
+                Start Logging Workout
               </button>
             </div>
           )

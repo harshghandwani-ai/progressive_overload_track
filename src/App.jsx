@@ -15,7 +15,54 @@ export default function App() {
     saveData(data);
   }, [data]);
 
-  // Start new empty workout session
+  const handleQuickLogExercise = ({ exerciseName, muscleGroup, equipment, sets, image }) => {
+    setData(prev => {
+      let exMatch = prev.exercises.find(e => e.name.toLowerCase() === exerciseName.toLowerCase());
+      let updatedExercises = [...prev.exercises];
+
+      if (!exMatch) {
+        exMatch = {
+          id: `ex-${Date.now()}`,
+          name: exerciseName,
+          muscleGroup: muscleGroup || 'Full Body',
+          equipment: equipment || 'Machine',
+          image: image || null,
+          isCustom: true
+        };
+        updatedExercises.push(exMatch);
+      } else if (image && !exMatch.image) {
+        exMatch.image = image;
+      }
+
+      const newSession = {
+        id: `workout-${Date.now()}`,
+        name: exerciseName,
+        date: new Date().toISOString(),
+        image: image || null,
+        durationMinutes: 20,
+        exercises: [
+          {
+            exerciseId: exMatch.id,
+            exerciseName: exMatch.name,
+            image: image || exMatch.image,
+            sets: sets.map((s, i) => ({
+              setNumber: i + 1,
+              weight: s.weight,
+              reps: s.reps,
+              completed: true
+            }))
+          }
+        ]
+      };
+
+      return {
+        ...prev,
+        exercises: updatedExercises,
+        workoutHistory: [...prev.workoutHistory, newSession]
+      };
+    });
+  };
+
   const handleStartEmptyWorkout = () => {
     const newWorkout = {
       id: `workout-${Date.now()}`,
@@ -28,7 +75,6 @@ export default function App() {
     setActiveTab('logger');
   };
 
-  // Start workout from routine
   const handleStartFromRoutine = (routine) => {
     const routineExercises = routine.exerciseIds.map(id => {
       const ex = data.exercises.find(e => e.id === id);
@@ -55,7 +101,6 @@ export default function App() {
     setActiveTab('logger');
   };
 
-  // Save completed workout
   const handleSaveWorkout = (completedWorkout) => {
     setData(prev => ({
       ...prev,
@@ -65,7 +110,6 @@ export default function App() {
     setActiveTab('dashboard');
   };
 
-  // Cancel current active workout
   const handleCancelWorkout = () => {
     if (window.confirm('Are you sure you want to cancel the active workout session? Unsaved set progress will be lost.')) {
       setData(prev => ({ ...prev, activeWorkout: null }));
@@ -73,7 +117,6 @@ export default function App() {
     }
   };
 
-  // Add custom exercise
   const handleAddExercise = (newExercise) => {
     setData(prev => ({
       ...prev,
@@ -81,7 +124,6 @@ export default function App() {
     }));
   };
 
-  // Create custom routine
   const handleCreateRoutine = (newRoutine) => {
     setData(prev => ({
       ...prev,
@@ -89,7 +131,6 @@ export default function App() {
     }));
   };
 
-  // Delete routine
   const handleDeleteRoutine = (routineId) => {
     setData(prev => ({
       ...prev,
@@ -123,11 +164,13 @@ export default function App() {
       <main>
         {activeTab === 'dashboard' && (
           <Dashboard
+            exercises={data.exercises}
             workoutHistory={data.workoutHistory}
             routines={data.routines}
             onStartWorkout={handleStartEmptyWorkout}
             onStartFromRoutine={handleStartFromRoutine}
             onSelectTab={setActiveTab}
+            onQuickLogExercise={handleQuickLogExercise}
           />
         )}
 
@@ -145,10 +188,10 @@ export default function App() {
             <div className="glass-panel" style={{ padding: '3rem 2rem', textAlign: 'center', maxWidth: '600px', margin: '2rem auto' }}>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>No Active Workout Session</h2>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-                Start a fresh session to log your exercises, weights, reps, and photos.
+                Start a fresh session or use the Quick AI Photo Logger on the Dashboard!
               </p>
               <button className="btn btn-emerald" onClick={handleStartEmptyWorkout}>
-                Start Logging Workout
+                Start Logging Session
               </button>
             </div>
           )

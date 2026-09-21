@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Trophy, Dumbbell, Activity, Calendar, Play, ChevronRight, 
   TrendingUp, Sparkles, Camera, Plus
 } from 'lucide-react';
 import { calculateVolume, calculate1RM, formatDate } from '../../utils/formulas';
+import QuickSnapLogger from '../WorkoutLogger/QuickSnapLogger';
+import ExerciseTargetHUD from '../WorkoutLogger/ExerciseTargetHUD';
+import RestTimer from '../WorkoutLogger/RestTimer';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -13,7 +16,8 @@ import {
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 } from 'chart.js';
 
 ChartJS.register(
@@ -23,16 +27,22 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 export default function Dashboard({ 
+  exercises,
   workoutHistory, 
   routines, 
   onStartWorkout, 
   onStartFromRoutine, 
-  onSelectTab 
+  onSelectTab,
+  onQuickLogExercise 
 }) {
+  const [showRestTimer, setShowRestTimer] = useState(false);
+  const [prefilledText, setPrefilledText] = useState('');
+
   const totalWorkouts = workoutHistory.length;
 
   let grandTotalVolume = 0;
@@ -97,8 +107,26 @@ export default function Dashboard({
     }
   };
 
+  const handleSelectTargetForLogging = (name, weight, reps) => {
+    setPrefilledText(`${name} ${weight || 20}kg ${reps || 8} reps`);
+  };
+
   return (
     <div style={{ animation: 'fadeIn 0.25s ease' }}>
+      {/* Quick Snap AI Logger Card */}
+      <QuickSnapLogger
+        onLogExercise={onQuickLogExercise}
+        onStartRestTimer={() => setShowRestTimer(true)}
+        prefilledText={prefilledText}
+      />
+
+      {/* Target & Past Performance HUD */}
+      <ExerciseTargetHUD
+        exercises={exercises}
+        workoutHistory={workoutHistory}
+        onSelectTargetForLogging={handleSelectTargetForLogging}
+      />
+
       {/* Header Banner */}
       <div className="glass-panel" style={{ padding: '1.75rem 2rem', marginBottom: '2rem', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', right: '-30px', top: '-30px', opacity: 0.08 }}>
@@ -107,21 +135,18 @@ export default function Dashboard({
 
         <div style={{ maxWidth: '680px', position: 'relative', zIndex: 2 }}>
           <span className="badge badge-emerald" style={{ marginBottom: '0.6rem' }}>
-            <Sparkles size={13} /> Progressive Overload Tracker • Image Logging
+            <Sparkles size={13} /> Progressive Overload Tracker • Image & AI Vision
           </span>
-          <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-            Build Your Workout History. <span style={{ color: 'var(--accent-emerald)' }}>Log With Images.</span>
+          <h1 style={{ fontSize: '1.85rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+            Instant Photo Logging & <span style={{ color: 'var(--accent-emerald)' }}>Live Target HUD.</span>
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '1.5rem' }}>
-            Start completely fresh. Log your exercises, weights, reps, and images as you train. Overload recommendations dynamically evolve as your data grows!
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '1.25rem' }}>
+            Tap any exercise chip above to immediately view past session reps, 1RM sparkline curves, and your 25% overload target for today!
           </p>
 
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
             <button className="btn btn-emerald" onClick={onStartWorkout}>
-              <Play size={18} /> Start Logging Workout
-            </button>
-            <button className="btn btn-secondary" onClick={() => onSelectTab('exercises')}>
-              <Plus size={16} /> Create First Exercise
+              <Play size={18} /> Full Workout Session
             </button>
           </div>
         </div>
@@ -174,7 +199,7 @@ export default function Dashboard({
         </div>
       </div>
 
-      {/* Workout Feed */}
+      {/* Workout History */}
       <div className="glass-panel" style={{ padding: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -186,7 +211,7 @@ export default function Dashboard({
           <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-secondary)' }}>
             <Camera size={36} color="var(--text-muted)" style={{ marginBottom: '0.75rem' }} />
             <p style={{ fontWeight: 600, fontSize: '1rem', color: '#fff', marginBottom: '0.25rem' }}>Your workout feed is empty</p>
-            <p style={{ fontSize: '0.85rem' }}>Click "Start Logging Workout" to record your first set with optional exercise & workout photos!</p>
+            <p style={{ fontSize: '0.85rem' }}>Use the quick photo box above to log your first exercise set!</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -214,7 +239,8 @@ export default function Dashboard({
 
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.85rem' }}>
                     {w.exercises.map((ex, idx) => (
-                      <span key={idx} className="badge badge-indigo">
+                      <span key={idx} className="badge badge-indigo" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                        {ex.image && <img src={ex.image} alt="" style={{ width: '16px', height: '16px', borderRadius: '2px', objectFit: 'cover' }} />}
                         {ex.exerciseName}: {ex.sets.filter(s => s.completed).map(s => `${s.weight || 0}k×${s.reps || 0}`).join(', ')}
                       </span>
                     ))}
@@ -225,6 +251,11 @@ export default function Dashboard({
           </div>
         )}
       </div>
+
+      {/* Floating Rest Timer */}
+      {showRestTimer && (
+        <RestTimer initialSeconds={90} onClose={() => setShowRestTimer(false)} />
+      )}
     </div>
   );
 }
